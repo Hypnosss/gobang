@@ -7,12 +7,12 @@ const canvasWidth = 800;
 const canvasHeight = 800;
 canvas.width = canvasWidth;
 canvas.height = canvasHeight;
-var blackOrWhite, someoneWins;
+var blackOrWhite, someoneWins = 1, choosingMode = 1, oldMode = 0, newMode = 0, mode = 0, aiTurn = 0;
+
 var grid = [];
 var oldRows = [], oldColumns = [];
 
 function init() {
-  someoneWins = 0;
   blackOrWhite = 0;
   initChessboard();
   initGrid();
@@ -44,6 +44,17 @@ function initChessboard() {
   drawCircle(600,600, 5);
   drawCircle(600,200, 5);
   drawCircle(400,400, 5);
+}
+
+function initStartInterface() {
+  ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+  ctx.fillRect(0, 0, 800, 800);
+  ctx.fillStyle = "rgb(255, 255, 255)";
+  ctx.textAlign = "center";
+  ctx.font = "50px serif";
+  ctx.fillText("Gobang", 400, 200);
+  ctx.fillText("PVP", 400, 600);
+  ctx.fillText("PVE", 400, 700);
 }
 
 function initGrid() {
@@ -180,26 +191,111 @@ function retractChess() {
   blackOrWhite = 1 - blackOrWhite;
 }
 
-init();
+function chooseMode() {
+  init();
+  initStartInterface();
+  // someoneWins = 0;
+}
 
-canvas.onclick = function(e) {
-  if(!someoneWins) {
+function gobangAI() {
+  // console.log(grid)
+  var aix = -1, aiy = -1;
+  for(let i = 0; i < grid[0].length; i++) {
+    for(let j = 0; j < grid.length; j++) {
+      console.log(i, j, grid[i][j])
+      if(grid[i][j] == -1) {
+        [aiy, aix] = [i, j];
+        break;
+      }
+    }
+    if(aix >= 0 && aix <= 14 && aiy >= 0 && aiy <= 14) {
+      break;
+    }
+  }
+  console.log(aix, aiy);
+  aiTurn = 0;
+  canvas.dispatchEvent(new MouseEvent("click", {
+    bubbles: true,
+    cancelable: true,
+    view: window,
+    clientX: 9 + (aix + 1) * 50,
+    clientY: 9 + (aiy + 1) * 50,
+  }));
+}
+
+chooseMode();
+
+canvas.onmousemove = function(e) {
+  if(choosingMode) {
     var x = e.offsetX;
     var y = e.offsetY;
+    oldMode = newMode;
+
+    if(y <= 614 && y >= 550 && x <= 450 && x >= 350) {  
+      newMode = 1;
+    } else if(y <= 714 && y >= 650 && x <= 450 && x >= 350) {
+      newMode = 2;
+    } else {
+      newMode = 0;
+    }
+
+    if(oldMode != newMode) {
+      if(newMode == 0) {
+        initChessboard();
+        initStartInterface();
+      } else if (newMode == 1) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+        ctx.fillRect(350, 550, 100, 64);
+      } else {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+        ctx.fillRect(350, 650, 100, 64);
+      }
+    }
+  }
+}
+
+canvas.onclick = function(e) {
+  var x = e.offsetX;
+  var y = e.offsetY;
+  // console.log(x,y)
+  if(!someoneWins && !choosingMode && !aiTurn) {//判断下棋的位置
     var column = (x % 50 < 25) ? Math.floor(x / 50) : Math.ceil(x / 50);
     var row = (y % 50 < 25) ? Math.floor(y / 50) : Math.ceil(y / 50);
     oldColumns[oldColumns.length] = column;
     oldRows[oldRows.length] = row;
     playChess(x, y, column, row);
-    if(isWin(row - 1, column - 1, grid, 15, 5)) {
-      console.log(((blackOrWhite?"black":"white") + " wins!!!!"));
+    if(isWin(row - 1, column - 1, grid, 15, 5)) {//判断是否有一方胜利
       someoneWins = 1;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+      ctx.fillRect(0, 0, 800, 800);
+      ctx.font = "50px serif";
+      ctx.fillStyle = "rgb(255, 255, 255)";
+      ctx.textAlign = "center";
+      ctx.fillText(((blackOrWhite?"black":"white") + " wins!!!!"), 400, 400);
+    }
+    if(mode == 2 && blackOrWhite) {
+      aiTurn = 1;
+      gobangAI();
     }
   }  
+  if(choosingMode) {//判断点击的是哪一个mode
+    if(y <= 614 && y >= 550 && x <= 450 && x >= 350) {  
+      mode = 1;
+    } else if(y <= 714 && y >= 650 && x <= 450 && x >= 350) {
+      mode = 2;
+    } 
+    if(mode != 0) {
+      choosingMode = 0;
+      someoneWins = 0;
+      initChessboard();
+      // console.log(mode + "!!")
+    } 
+  }
 }
 
 btnReset.onclick = function() {
-  init();
+  choosingMode = 1;
+  chooseMode();
 } 
 
 btnRetract.onclick = function() {
